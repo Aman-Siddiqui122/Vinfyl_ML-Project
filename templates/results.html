@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vinify - Analysis Result</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['"Playfair Display"', 'serif'],
+                        sans: ['"Lato"', 'sans-serif'],
+                    },
+                    colors: {
+                        wine: {
+                            50: '#fdf2f4', 100: '#fce7eb', 200: '#f8d0d9',
+                            300: '#f2aab9', 400: '#e97892', 500: '#db4f70',
+                            600: '#c72f52', 700: '#a72242', 800: '#8c1f3b',
+                            900: '#771d36',
+                        },
+                        gold: { 400: '#fbbf24', 500: '#f59e0b' }
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(30px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        fadeInLeft: {
+                            '0%': { opacity: '0', transform: 'translateX(-30px)' },
+                            '100%': { opacity: '1', transform: 'translateX(0)' },
+                        },
+                        scoreReveal: {
+                            '0%': { opacity: '0', transform: 'scale(0.4) rotate(-10deg)' },
+                            '60%': { transform: 'scale(1.1) rotate(2deg)' },
+                            '100%': { opacity: '1', transform: 'scale(1) rotate(0deg)' },
+                        },
+                        shimmer: {
+                            '0%': { transform: 'translateX(-100%)' },
+                            '100%': { transform: 'translateX(100%)' },
+                        },
+                        arcFill: {
+                            '0%': { 'stroke-dashoffset': '440' },
+                            '100%': { 'stroke-dashoffset': 'var(--target-offset)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { 'box-shadow': '0 0 20px rgba(219,79,112,0.3)' },
+                            '50%': { 'box-shadow': '0 0 50px rgba(219,79,112,0.7), 0 0 80px rgba(219,79,112,0.3)' },
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 10s infinite alternate',
+                        'fade-in-up': 'fadeInUp 0.7s ease-out forwards',
+                        'fade-in-left': 'fadeInLeft 0.7s ease-out forwards',
+                        'score-reveal': 'scoreReveal 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                        'shimmer': 'shimmer 1.5s infinite',
+                        'pulse-glow': 'pulseGlow 3s ease-in-out infinite',
+                        'arc-fill': 'arcFill 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #0f172a; overflow-x: hidden; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .glass-card {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(10px);
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #771d36; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a72242; }
+
+        .bg-blob {
+            position: absolute;
+            filter: blur(80px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Animated score arc */
+        .score-ring {
+            transform: rotate(-220deg);
+            transform-origin: center;
+        }
+
+        .score-arc {
+            stroke-dasharray: 440;
+            stroke-dashoffset: 440;
+            animation: arcFill 1.4s 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            stroke-linecap: round;
+        }
+
+        /* Staggered animation delays */
+        .delay-100 { animation-delay: 0.1s; opacity: 0; }
+        .delay-200 { animation-delay: 0.2s; opacity: 0; }
+        .delay-300 { animation-delay: 0.3s; opacity: 0; }
+        .delay-400 { animation-delay: 0.4s; opacity: 0; }
+        .delay-500 { animation-delay: 0.5s; opacity: 0; }
+        .delay-600 { animation-delay: 0.6s; opacity: 0; }
+        .delay-700 { animation-delay: 0.7s; opacity: 0; }
+        .delay-800 { animation-delay: 0.8s; opacity: 0; }
+
+        /* Stat bars */
+        .stat-bar-fill {
+            width: 0%;
+            transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Verdict badge */
+        .verdict-exceptional { color: #fbbf24; border-color: rgba(251,191,36,0.3); background: rgba(251,191,36,0.08); }
+        .verdict-good        { color: #34d399; border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.08); }
+        .verdict-average     { color: #60a5fa; border-color: rgba(96,165,250,0.3); background: rgba(96,165,250,0.08); }
+        .verdict-poor        { color: #f87171; border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.08); }
+
+        /* Star rating */
+        .star { color: #374151; font-size: 1.4rem; transition: color 0.2s; }
+        .star.lit { color: #fbbf24; }
+
+        /* Shimmer button */
+        .btn-shimmer {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-shimmer::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: translateX(-100%);
+        }
+        .btn-shimmer:hover::after {
+            animation: shimmer 1.5s infinite;
+        }
+
+        /* Decorative separator */
+        .ornament {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(219,79,112,0.4);
+        }
+        .ornament::before, .ornament::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(219,79,112,0.3), transparent);
+        }
+
+        /* Property pill */
+        .prop-pill {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.06);
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .prop-pill:hover {
+            border-color: rgba(219,79,112,0.3);
+            background: rgba(139,31,59,0.15);
+        }
+
+        /* Grape decoration */
+        @keyframes floatY {
+            0%, 100% { transform: translateY(0px) rotate(var(--r, 0deg)); }
+            50% { transform: translateY(-12px) rotate(var(--r, 0deg)); }
+        }
+        .float-deco { animation: floatY 4s ease-in-out infinite; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 relative font-sans text-slate-200">
+
+    <!-- Animated Background Blobs -->
+    <div class="bg-blob bg-wine-800 w-96 h-96 rounded-full top-0 left-0 opacity-50 animate-blob" style="--r:0deg"></div>
+    <div class="bg-blob bg-purple-900 w-80 h-80 rounded-full top-10 right-0 opacity-40 animate-blob" style="animation-delay:3s"></div>
+    <div class="bg-blob bg-rose-900 w-72 h-72 rounded-full bottom-10 left-20 opacity-40 animate-blob" style="animation-delay:6s"></div>
+
+    <!-- Main Container -->
+    <main class="relative z-10 w-full max-w-5xl">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8 animate-fade-in-up delay-100">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <i class="fa-solid fa-wine-glass text-2xl text-gold-400 group-hover:rotate-12 transition-transform duration-300"></i>
+                <span class="text-2xl font-serif font-bold text-white tracking-wide">Vinify</span>
+            </a>
+            <a href="index.html"
+               class="flex items-center gap-2 text-sm text-slate-400 hover:text-wine-300 transition-colors border border-white/10 hover:border-wine-500/40 rounded-full px-4 py-2 btn-shimmer">
+                <i class="fa-solid fa-arrow-left text-xs"></i>
+                New Analysis
+            </a>
+        </div>
+
+        <!-- Two-Column Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+            <!-- LEFT COLUMN: Score + Verdict -->
+            <div class="lg:col-span-2 flex flex-col gap-6">
+
+                <!-- Score Card -->
+                <div class="glass-panel rounded-2xl p-8 text-center relative overflow-hidden animate-fade-in-up delay-200">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-wine-500/60 to-transparent"></div>
+
+                    <!-- Floating decorative element -->
+                    <div class="absolute top-4 right-4 float-deco opacity-10" style="--r: 15deg">
+                        <i class="fa-solid fa-wine-bottle text-5xl text-wine-300"></i>
+                    </div>
+
+                    <p class="text-xs uppercase tracking-[0.25em] text-wine-400 mb-6 font-bold">Predicted Quality</p>
+
+                    <!-- Circular Score Ring -->
+                    <div class="relative w-44 h-44 mx-auto mb-4">
+                        <svg class="w-full h-full" viewBox="0 0 160 160">
+                            <!-- Background track -->
+                            <circle cx="80" cy="80" r="70" fill="none"
+                                stroke="rgba(255,255,255,0.05)" stroke-width="10"/>
+                            <!-- Colored arc -->
+                            <circle class="score-arc score-ring" id="scoreArc"
+                                cx="80" cy="80" r="70" fill="none"
+                                stroke="url(#arcGradient)" stroke-width="10"
+                                style="--target-offset: 44;" />
+                            <defs>
+                                <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#a72242"/>
+                                    <stop offset="100%" stop-color="#fbbf24"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <!-- Score number inside ring -->
+                        <div class="absolute inset-0 flex flex-col items-center justify-center animate-score-reveal delay-500">
+                            <span id="scoreDisplay" class="text-5xl font-bold font-serif text-transparent bg-clip-text bg-gradient-to-br from-gold-400 to-yellow-200">8.5</span>
+                            <span class="text-xs text-slate-500 mt-0.5">out of 10</span>
+                        </div>
+                    </div>
+
+                    <!-- Star Rating -->
+                    <div class="flex justify-center gap-1 mb-5" id="starRating">
+                        <i class="fa-solid fa-star star" data-index="1"></i>
+                        <i class="fa-solid fa-star star" data-index="2"></i>
+                        <i class="fa-solid fa-star star" data-index="3"></i>
+                        <i class="fa-solid fa-star star" data-index="4"></i>
+                        <i class="fa-solid fa-star star" data-index="5"></i>
+                    </div>
+
+                    <!-- Verdict Badge -->
+                    <div id="verdictBadge" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-bold verdict-exceptional">
+                        <i class="fa-solid fa-trophy text-xs"></i>
+                        <span id="verdictLabel">Exceptional</span>
+                    </div>
+
+                    <div class="ornament mt-6 mb-4"><i class="fa-solid fa-seedling text-xs"></i></div>
+
+                    <p id="verdictText" class="text-slate-400 text-sm italic leading-relaxed px-2">
+                        "An exceptional vintage with remarkable balance and depth."
+                    </p>
+                </div>
+
+                <!-- Back Button Card -->
+                <div class="glass-panel rounded-2xl p-5 animate-fade-in-up delay-400">
+                    <p class="text-xs text-slate-500 uppercase tracking-widest mb-3 font-bold">What next?</p>
+                    <div class="flex flex-col gap-2">
+                        <a href="index.html"
+                           class="flex items-center justify-between w-full px-4 py-3 bg-gradient-to-r from-wine-700 to-wine-600 rounded-xl text-white font-bold text-sm shadow-lg shadow-wine-900/50 hover:shadow-wine-600/40 hover:scale-[1.02] transition-all duration-300 btn-shimmer">
+                            <span class="flex items-center gap-2">
+                                <i class="fa-solid fa-flask"></i> Analyze Another
+                            </span>
+                            <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </a>
+                        <button onclick="window.print()"
+                           class="flex items-center justify-between w-full px-4 py-3 border border-white/10 hover:border-wine-500/30 rounded-xl text-slate-300 hover:text-white text-sm transition-all duration-300 hover:bg-white/5">
+                            <span class="flex items-center gap-2">
+                                <i class="fa-solid fa-download"></i> Save Report
+                            </span>
+                            <i class="fa-solid fa-chevron-right text-xs text-slate-600"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Properties + Breakdown -->
+            <div class="lg:col-span-3 flex flex-col gap-6">
+
+                <!-- Chemical Profile Breakdown -->
+                <div class="glass-panel rounded-2xl p-7 animate-fade-in-up delay-300">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-xl font-serif text-white">Chemical Profile</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Relative analysis of submitted values</p>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-wine-900/60 border border-wine-500/30 flex items-center justify-center">
+                            <i class="fa-solid fa-chart-bar text-wine-400 text-xs"></i>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4" id="profileBars">
+                        <!-- Bars injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Input Summary Grid -->
+                <div class="glass-panel rounded-2xl p-7 animate-fade-in-up delay-500">
+                    <div class="flex items-center gap-3 mb-5">
+                        <h2 class="text-xl font-serif text-white">Submitted Values</h2>
+                        <span class="text-[10px] uppercase tracking-widest text-wine-400 bg-wine-900/40 border border-wine-800/50 rounded-full px-3 py-1">Lab Data</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="propGrid">
+                        <!-- Props injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Recommendation Card -->
+                <div class="glass-card rounded-2xl p-6 border border-wine-800/30 animate-fade-in-up delay-700 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-wine-900/20 to-transparent pointer-events-none"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i class="fa-solid fa-lightbulb text-gold-400 text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-white mb-1 uppercase tracking-wider">Sommelier's Note</h3>
+                                <p id="sommelierNote" class="text-slate-400 text-sm leading-relaxed">
+                                    Consider reducing volatile acidity for a cleaner finish. High alcohol content suggests warm fermentation — monitor temperature during the next batch.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8 animate-fade-in-up delay-800 opacity-0">
+            <p class="text-xs text-slate-600">Powered by Scikit-Learn · ElasticNet Regression Model · Vinify © 2024</p>
+        </div>
+
+    </main>
+
+    <script>
+        // ─── DATA (from Flask you'd inject these via Jinja2 like {{ prediction }}) ───
+        // For demo, we read from URL params or use defaults
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const resultData = {
+            score: parseFloat(urlParams.get('score') || '8.5'),
+            fixed_acidity:        parseFloat(urlParams.get('fixed_acidity')        || '7.4'),
+            volatile_acidity:     parseFloat(urlParams.get('volatile_acidity')     || '0.70'),
+            citric_acid:          parseFloat(urlParams.get('citric_acid')          || '0.00'),
+            residual_sugar:       parseFloat(urlParams.get('residual_sugar')       || '1.9'),
+            chlorides:            parseFloat(urlParams.get('chlorides')            || '0.076'),
+            free_sulfur_dioxide:  parseFloat(urlParams.get('free_sulfur_dioxide')  || '11.0'),
+            total_sulfur_dioxide: parseFloat(urlParams.get('total_sulfur_dioxide') || '34.0'),
+            density:              parseFloat(urlParams.get('density')              || '0.9978'),
+            pH:                   parseFloat(urlParams.get('pH')                   || '3.51'),
+            sulphates:            parseFloat(urlParams.get('sulphates')            || '0.56'),
+            alcohol:              parseFloat(urlParams.get('alcohol')              || '9.4'),
+        };
+
+        // ─── SCORE DISPLAY ────────────────────────────────────────────────────────────
+        const score = resultData.score;
+        document.getElementById('scoreDisplay').textContent = score.toFixed(1);
+
+        // Arc calculation: score 0-10 mapped to stroke-dashoffset 440(empty) → 0(full)
+        // We use a 270-degree arc (440px circumference for r=70)
+        const arcAmt = score / 10; // 0..1
+        const dashOffset = 440 - (arcAmt * 440 * 0.75); // 0.75 = 270/360 of circle
+        document.getElementById('scoreArc').style.setProperty('--target-offset', dashOffset.toFixed(1));
+
+        // ─── VERDICT ──────────────────────────────────────────────────────────────────
+        const badge  = document.getElementById('verdictBadge');
+        const label  = document.getElementById('verdictLabel');
+        const text   = document.getElementById('verdictText');
+        const note   = document.getElementById('sommelierNote');
+
+        let verdictClass, verdictIcon, verdictLabelText, verdictTextContent, sommelierText;
+        if (score >= 8) {
+            verdictClass = 'verdict-exceptional';
+            verdictIcon  = 'fa-trophy';
+            verdictLabelText = 'Exceptional';
+            verdictTextContent = '"An outstanding vintage — extraordinary balance, complexity, and finish."';
+            sommelierText = 'This wine shows excellent potential. Controlled fermentation temperatures and careful oak aging could further elevate the profile. Recommend cellaring 2–3 years.';
+        } else if (score >= 7) {
+            verdictClass = 'verdict-good';
+            verdictIcon  = 'fa-thumbs-up';
+            verdictLabelText = 'Very Good';
+            verdictTextContent = '"A well-crafted wine with pleasant character and reliable quality."';
+            sommelierText = 'Solid, consistent profile. Minor adjustments to sulphate levels could enhance complexity. Suitable for early drinking or short-term cellaring.';
+        } else if (score >= 6) {
+            verdictClass = 'verdict-average';
+            verdictIcon  = 'fa-wine-glass';
+            verdictLabelText = 'Good';
+            verdictTextContent = '"A pleasant everyday wine, approachable and uncomplicated."';
+            sommelierText = 'Consider reducing volatile acidity for a cleaner finish. Increasing free SO₂ slightly may improve stability during storage.';
+        } else if (score >= 5) {
+            verdictClass = 'verdict-average';
+            verdictIcon  = 'fa-circle-half-stroke';
+            verdictLabelText = 'Average';
+            verdictTextContent = '"Acceptable quality, though lacking in depth and character."';
+            sommelierText = 'Volatile acidity may be contributing off-notes. Review fermentation hygiene. Citric acid adjustments could restore freshness.';
+        } else {
+            verdictClass = 'verdict-poor';
+            verdictIcon  = 'fa-triangle-exclamation';
+            verdictLabelText = 'Below Average';
+            verdictTextContent = '"Significant issues detected — review fermentation and oxidation controls."';
+            sommelierText = 'High volatile acidity and/or SO₂ imbalance are likely culprits. Full process review recommended before next batch.';
+        }
+
+        badge.className = `inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-bold ${verdictClass}`;
+        badge.querySelector('i').className = `fa-solid ${verdictIcon} text-xs`;
+        label.textContent = verdictLabelText;
+        text.textContent  = verdictTextContent;
+        note.textContent  = sommelierText;
+
+        // ─── STARS ────────────────────────────────────────────────────────────────────
+        const starCount = Math.round(score / 2); // 0-10 → 0-5 stars
+        document.querySelectorAll('.star').forEach((star, i) => {
+            setTimeout(() => {
+                if (i < starCount) star.classList.add('lit');
+            }, 600 + i * 120);
+        });
+
+        // ─── PROPERTY GRID ────────────────────────────────────────────────────────────
+        const props = [
+            { label: 'Fixed Acidity',    icon: 'fa-flask',            unit: 'g/dm³', key: 'fixed_acidity' },
+            { label: 'Volatile Acidity', icon: 'fa-wind',             unit: 'g/dm³', key: 'volatile_acidity' },
+            { label: 'Citric Acid',      icon: 'fa-lemon',            unit: 'g/dm³', key: 'citric_acid' },
+            { label: 'Residual Sugar',   icon: 'fa-cube',             unit: 'g/dm³', key: 'residual_sugar' },
+            { label: 'Chlorides',        icon: 'fa-droplet',          unit: 'g/dm³', key: 'chlorides' },
+            { label: 'Free SO₂',         icon: 'fa-cloud',            unit: 'mg/dm³', key: 'free_sulfur_dioxide' },
+            { label: 'Total SO₂',        icon: 'fa-layer-group',      unit: 'mg/dm³', key: 'total_sulfur_dioxide' },
+            { label: 'Density',          icon: 'fa-weight-hanging',   unit: 'g/cm³', key: 'density' },
+            { label: 'pH',               icon: 'fa-scale-balanced',   unit: '', key: 'pH' },
+            { label: 'Sulphates',        icon: 'fa-wand-magic-sparkles', unit: 'g/dm³', key: 'sulphates' },
+            { label: 'Alcohol',          icon: 'fa-percent',          unit: '% vol', key: 'alcohol' },
+        ];
+
+        const grid = document.getElementById('propGrid');
+        props.forEach((p, idx) => {
+            const val = resultData[p.key];
+            const div = document.createElement('div');
+            div.className = 'prop-pill rounded-xl p-3 cursor-default';
+            div.style.opacity = '0';
+            div.style.animation = `fadeInUp 0.5s ease-out ${0.5 + idx * 0.06}s forwards`;
+            div.innerHTML = `
+                <div class="flex items-center gap-1.5 mb-1.5">
+                    <i class="fa-solid ${p.icon} text-wine-400 text-[10px]"></i>
+                    <span class="text-[10px] text-slate-500 uppercase tracking-wider font-bold">${p.label}</span>
+                </div>
+                <div class="text-base font-bold text-white font-serif">${typeof val === 'number' ? val.toFixed(val < 1 ? 3 : 1) : val}</div>
+                <div class="text-[10px] text-slate-600 mt-0.5">${p.unit}</div>
+            `;
+            grid.appendChild(div);
+        });
+
+        // ─── PROFILE BARS ─────────────────────────────────────────────────────────────
+        const barDefs = [
+            {
+                label: 'Acidity Balance',
+                icon: 'fa-flask',
+                value: Math.min((resultData.fixed_acidity / 15) * 100, 100),
+                color: 'from-wine-600 to-wine-400',
+                tip: 'Fixed acidity relative to typical range (4–15 g/dm³)'
+            },
+            {
+                label: 'Sweetness',
+                icon: 'fa-cube',
+                value: Math.min((resultData.residual_sugar / 20) * 100, 100),
+                color: 'from-gold-500 to-gold-400',
+                tip: 'Residual sugar relative to typical range (0.6–20 g/dm³)'
+            },
+            {
+                label: 'Body',
+                icon: 'fa-weight-hanging',
+                value: Math.min(((resultData.density * 1000 - 990) + resultData.alcohol) * 4, 100),
+                color: 'from-purple-700 to-purple-400',
+                tip: 'Derived from density and alcohol content'
+            },
+            {
+                label: 'Alcohol Content',
+                icon: 'fa-percent',
+                value: Math.min(((resultData.alcohol - 8) / 7) * 100, 100),
+                color: 'from-rose-700 to-rose-400',
+                tip: 'Alcohol percentage relative to range (8–15% vol)'
+            },
+            {
+                label: 'SO₂ Protection',
+                icon: 'fa-shield',
+                value: Math.min((resultData.free_sulfur_dioxide / 72) * 100, 100),
+                color: 'from-sky-700 to-sky-400',
+                tip: 'Free SO₂ relative to typical range (1–72 mg/dm³)'
+            },
+        ];
+
+        const barsContainer = document.getElementById('profileBars');
+        barDefs.forEach((b, idx) => {
+            const rounded = Math.round(b.value);
+            const el = document.createElement('div');
+            el.style.opacity = '0';
+            el.style.animation = `fadeInUp 0.5s ease-out ${0.3 + idx * 0.1}s forwards`;
+            el.innerHTML = `
+                <div class="flex justify-between items-center mb-1.5">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid ${b.icon} text-slate-500 text-xs"></i>
+                        <span class="text-xs text-slate-300 font-bold uppercase tracking-wider">${b.label}</span>
+                    </div>
+                    <span class="text-xs font-bold text-slate-400 tabular-nums">${rounded}%</span>
+                </div>
+                <div class="w-full bg-slate-800/70 rounded-full h-2 overflow-hidden">
+                    <div class="h-2 rounded-full bg-gradient-to-r ${b.color} stat-bar-fill" data-width="${rounded}"></div>
+                </div>
+                <p class="text-[10px] text-slate-600 mt-1">${b.tip}</p>
+            `;
+            barsContainer.appendChild(el);
+        });
+
+        // Animate bars after a brief delay
+        setTimeout(() => {
+            document.querySelectorAll('.stat-bar-fill').forEach(bar => {
+                bar.style.width = bar.dataset.width + '%';
+            });
+        }, 400);
+    </script>
+</body>
+</html>
