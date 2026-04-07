@@ -17,7 +17,7 @@ jobs:
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
+          username: ${{ secrets.EC2_USER }}       # ✅ fixed
           key: ${{ secrets.EC2_KEY }}
           source: "."
           target: "~/Vinfyl_ML-Project"
@@ -26,8 +26,8 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          username: ${{ secrets.EC2_USER }}       # ✅ fixed
+          key: ${{ secrets.EC2_KEY }}             # ✅ fixed (was EC2_SSH_PRIVATE_KEY)
           script: |
             cd ~/Vinfyl_ML-Project
             docker-compose down
