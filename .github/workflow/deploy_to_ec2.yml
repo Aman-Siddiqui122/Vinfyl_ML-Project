@@ -3,24 +3,33 @@ name: Deploy to AWS EC2
 on:
   push:
     branches:
-      - main  # Change to your branch if it's not 'main' (e.g., 'master' or 'develop')
+      - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # GitHub's runner machine
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@v1.0.3  # Reliable SSH action
+      - name: Copy repo to EC2
+        uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          port: 22
+          source: "."
+          target: "~/Vinfyl_ML-Project"
+
+      - name: Deploy with Docker Compose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script: |
             cd ~/Vinfyl_ML-Project
-            git pull 
-            docker restart Wine_Predictor
+            docker-compose down
+            docker-compose pull
+            docker-compose up -d --build
